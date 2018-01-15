@@ -81,7 +81,7 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
     prevBlocks(0),
     nWeight(0)
 {
-    resize(450, 400);
+    resize(800, 660);
     setWindowTitle(tr("BUZZ") + " - " + tr("Wallet"));
 #ifndef Q_OS_MAC
     qApp->setWindowIcon(QIcon(":icons/novacoin"));
@@ -230,31 +230,31 @@ void BitcoinGUI::createActions()
 {
     QActionGroup *tabGroup = new QActionGroup(this);
 
-    overviewAction = new QAction(QIcon(":/icons/overview"), tr("&Dashboard"), this);
+    overviewAction = new QAction(QIcon(fUseBlackTheme ? ":/icons/black/overview" : ":/icons/overview"), tr("&Dashboard"), this);
     overviewAction->setToolTip(tr("Show general overview of wallet"));
     overviewAction->setCheckable(true);
     overviewAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_1));
     tabGroup->addAction(overviewAction);
 
-    receiveCoinsAction = new QAction(QIcon(":/icons/receiving_addresses"), tr("&Receive"), this);
+    receiveCoinsAction = new QAction(QIcon(fUseBlackTheme ? ":/icons/black/receive": ":/icons/receiving_addresses"), tr("&Receive"), this);
     receiveCoinsAction->setToolTip(tr("Show the list of addresses for receiving payments"));
     receiveCoinsAction->setCheckable(true);
     receiveCoinsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_2));
     tabGroup->addAction(receiveCoinsAction);
 
-    sendCoinsAction = new QAction(QIcon(":/icons/send"), tr("&Send"), this);
+    sendCoinsAction = new QAction(QIcon(fUseBlackTheme ? ":/icons/black/send" : ":/icons/send"), tr("&Send"), this);
     sendCoinsAction->setToolTip(tr("Send coins to a BUZZ address"));
     sendCoinsAction->setCheckable(true);
     sendCoinsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_3));
     tabGroup->addAction(sendCoinsAction);
 
-    historyAction = new QAction(QIcon(":/icons/history"), tr("&Transactions"), this);
+    historyAction = new QAction(QIcon(fUseBlackTheme ? ":/icons/black/history" : ":/icons/history"), tr("&Transactions"), this);
     historyAction->setToolTip(tr("Browse transaction history"));
     historyAction->setCheckable(true);
     historyAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_4));
     tabGroup->addAction(historyAction);
 
-    addressBookAction = new QAction(QIcon(":/icons/address-book"), tr("&Address Book"), this);
+    addressBookAction = new QAction(QIcon(fUseBlackTheme ? ":/icons/black/address-book" : ":/icons/address-book"), tr("&Address Book"), this);
     addressBookAction->setToolTip(tr("Edit the list of stored addresses and labels"));
     addressBookAction->setCheckable(true);
     addressBookAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_5));
@@ -283,9 +283,8 @@ void BitcoinGUI::createActions()
     aboutQtAction->setMenuRole(QAction::AboutQtRole);
 
     // charity gui
-    charityAction = new QAction(QIcon(":/icons/novacoin"), tr("&Stake For Charity"), this);
-    charityAction->setToolTip(tr("Enable Stake For Charity"));
-    charityAction->setMenuRole(QAction::AboutRole);
+    charityAction = new QAction(QIcon(":/icons/novacoin"), tr("&Support Development"), this);
+    charityAction->setToolTip(tr("Enable Development Support"));
 
     optionsAction = new QAction(tr("&Options..."), this);
     optionsAction->setToolTip(tr("Modify configuration options for BUZZ"));
@@ -357,7 +356,7 @@ static QWidget* makeToolBarSpacer()
 {
     QWidget* spacer = new QWidget();
     spacer->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
-    spacer->setStyleSheet(fUseBlackTheme ? "QWidget { background: rgb(30,32,36); }" : "QWidget { background: none; }");
+    spacer->setStyleSheet(fUseBlackTheme ? "QWidget { background: rgb(24,26,30); }" : "QWidget { background: none; }");
     return spacer;
 }
 
@@ -366,16 +365,19 @@ void BitcoinGUI::createToolBars()
     toolbar = new QToolBar(tr("Tabs toolbar"));
     toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     toolbar->setContextMenuPolicy(Qt::PreventContextMenu);
+    
+    // set font style for toolbar
+    toolbar->setStyleSheet("QToolButton { font: 13px; }");
+
+    QWidget* header = new QWidget();
+    header->setMinimumSize(160, 188);
+    header->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    toolbar->addWidget(header);
 
     if (fUseBlackTheme)
-    {
-        QWidget* header = new QWidget();
-        header->setMinimumSize(160, 116);
-        header->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         header->setStyleSheet("QWidget { background-color: rgb(24,26,30); background-repeat: no-repeat; background-image: url(:/images/header); background-position: top center; }");
-        toolbar->addWidget(header);
-        toolbar->addWidget(makeToolBarSpacer());
-    }
+    else
+        header->setStyleSheet("QWidget { background-repeat: no-repeat; background-image: url(:/images/header2); background-position: top center; }");
 
     toolbar->addAction(overviewAction);
     toolbar->addAction(receiveCoinsAction);
@@ -407,17 +409,15 @@ void BitcoinGUI::setClientModel(ClientModel *clientModel)
     if(clientModel)
     {
         // Replace some strings and icons, when using the testnet
-        if(clientModel->isTestNet())
-        {
+        if(clientModel->isTestNet()) {
             setWindowTitle(windowTitle() + QString(" ") + tr("[testnet]"));
-#ifndef Q_OS_MAC
+        #ifndef Q_OS_MAC
             qApp->setWindowIcon(QIcon(":icons/novacoin_testnet"));
             setWindowIcon(QIcon(":icons/novacoin_testnet"));
-#else
+        #else
             MacDockIconHandler::instance()->setIcon(QIcon(":icons/novacoin_testnet"));
-#endif
-            if(trayIcon)
-            {
+        #endif
+            if(trayIcon) {
                 trayIcon->setToolTip(tr("BUZZ client") + QString(" ") + tr("[testnet]"));
                 trayIcon->setIcon(QIcon(":/icons/toolbar_testnet"));
                 toggleHideAction->setIcon(QIcon(":/icons/toolbar_testnet"));
@@ -934,6 +934,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
         unlockWalletAction->setVisible(false);
         lockWalletAction->setVisible(false);
         encryptWalletAction->setEnabled(true);
+        charityAction->setEnabled(true);
         break;
     case WalletModel::Unlocked:
         labelEncryptionIcon->setPixmap(QIcon(fUseBlackTheme ? ":/icons/black/lock_open" : ":/icons/lock_open").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
@@ -942,6 +943,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
         unlockWalletAction->setVisible(false);
         lockWalletAction->setVisible(true);
         encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
+        charityAction->setEnabled(true);
         break;
     case WalletModel::Locked:
         labelEncryptionIcon->setPixmap(QIcon(fUseBlackTheme ? ":/icons/black/lock_closed" : ":/icons/lock_closed").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
@@ -950,6 +952,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
         unlockWalletAction->setVisible(true);
         lockWalletAction->setVisible(false);
         encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
+        charityAction->setEnabled(false);
         break;
     }
 }

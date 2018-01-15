@@ -14,7 +14,37 @@ charityDialog::charityDialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::charityDialog)
 {
+    CBitcoinAddress address;
+    int nCharityPercent;
+    Notificator *notificator = new Notificator();
+    
     ui->setupUi(this);
+    if (pwalletMain->IsLocked())
+    {
+        notificator->notify(Notificator::Warning, tr("Error!"), tr("Please unlock your wallet first."));
+        return;
+    }
+
+    address = pwalletMain->StakeForCharityAddress;
+    nCharityPercent = pwalletMain->nStakeForCharityPercent;
+    
+    ui->charityPercentSb->setValue(nCharityPercent);
+
+    if (address.IsValid()) {
+        ui->charityAddressEdit->setText(QString::fromStdString(address.ToString()));
+        ui->charityAddress->setText(QString::fromStdString(address.ToString()));
+    }
+    
+    if (this->model->isTestNet()) {
+        ui->charityAddress->setVisible(false);
+        ui->charityAddressEdit->setVisible(true);
+        ui->testNetLabel->setVisible(true);
+    } else {
+        ui->charityAddress->setVisible(true);
+        ui->charityAddressEdit->setVisible(false);
+        ui->testNetLabel->setVisible(false);
+
+    }
 }
 
 charityDialog::~charityDialog()
@@ -24,6 +54,7 @@ charityDialog::~charityDialog()
 
 void charityDialog::setModel(ClientModel *model)
 {
+    this->model = model;
 }
 
 void charityDialog::on_buttonBox_accepted()
@@ -48,11 +79,11 @@ void charityDialog::on_buttonBox_accepted()
         return;
     }
 
-    nCharityPercent = ui->charityPercentEdit->text().toInt();
+    nCharityPercent = ui->charityPercentSb->value();
 
-    // limit to a range between 0-100, otherwise default to 1%
-    if (nCharityPercent < 0 || nCharityPercent > 100)
-        nCharityPercent = 1;
+    // limit to a range between 5-100, otherwise default to 5%
+    if (nCharityPercent <= 5 || nCharityPercent > 100)
+        nCharityPercent = 5;
 
     if (pwalletMain->IsLocked())
     {
@@ -60,15 +91,7 @@ void charityDialog::on_buttonBox_accepted()
         return;
     }
 
-    // disable S4C if percentage is set to 0.
-    if (nCharityPercent == 0)
-    {
-        pwalletMain->fStakeForCharity = false;
-        notificator->notify(Notificator::Information, tr("Success!"), tr("Stake for Charity Disabled"));
-    } else {
-        pwalletMain->fStakeForCharity = true;
-    }
-
+    pwalletMain->fStakeForCharity = true;
     pwalletMain->StakeForCharityAddress = address.ToString();
     pwalletMain->nStakeForCharityPercent = nCharityPercent;
 
@@ -78,12 +101,12 @@ void charityDialog::on_buttonBox_accepted()
     {
         if (pwalletMain->fFileBacked)
         {
-            walletdb.WriteStakeForCharityEnabled(nCharityPercent <= 0 ? false : true);
+            walletdb.WriteStakeForCharityEnabled(pwalletMain->fStakeForCharity);
             walletdb.WriteStakeForCharityPercentage(nCharityPercent);
             walletdb.WriteStakeForCharityAddress(address.ToString());
-            notificator->notify(Notificator::Information, tr("Success!"), tr("Stake for Charity settings saved to wallet.dat!"));
+            notificator->notify(Notificator::Information, tr("Success!"), tr("Development Support settings saved to wallet.dat!"));
         } else {  
-            notificator->notify(Notificator::Warning, tr("Failure!"), tr("Stake for Charity settings NOT saved to wallet.dat!"));
+            notificator->notify(Notificator::Warning, tr("Failure!"), tr("Development Support settings NOT saved to wallet.dat!"));
         }
     }
     close();

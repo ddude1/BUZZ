@@ -576,7 +576,7 @@ bool CTransaction::CheckTransaction() const
 
 static const int64_t TransactionFeeDivider_V1 = 200; // Giving out 0.005%????
 static const int64_t TransactionFeeDivider_V2 = 25*COIN; // 200 = 0.5%, so 200*2 = 400 = 1% 1%*25 = 25% 
-static const int64_t TransactionFeeDividerSelf = 1*COIN; //divider for sending an input to output by same address to specify transaction fee percentage
+// static const int64_t TransactionFeeDividerSelf = 1*COIN; //divider for sending an input to output by same address to specify transaction fee percentage
 
 /**
  * As a coin technically equals to 1*COIN (due to ~8 decimal places)
@@ -589,7 +589,7 @@ static const int64_t TransactionFeeDividerSelf = 1*COIN; //divider for sending a
 static const time_t PercentageFeeSendingBegin = 1400000000;
 static const time_t PercentageFeeRelayBegin = 1400000000;
 static const time_t ForkTiming = 1454284800;
-static const time_t Fork2 = 1505877351;
+// static const time_t Fork2 = 1505877351;
 static const time_t Fork3 = 1506157251;
 
 //int64_t GetMinSendFee(const int64_t nValue)
@@ -1047,23 +1047,43 @@ static CBigNum GetProofOfStakeLimit(int nHeight)
 
 // miner's coin base reward
 time_t t=time(NULL);
-int64_t GetProofOfWorkReward(int64_t nFees)
+int64_t GetProofOfWorkReward(int64_t nFees, CBlockIndex* pindex)
 {
     int64_t nSubsidy = 10 * COIN;
 
+    double fCurrentSupply = GetCoinSupplyFromAmount(pindex->pprev ? pindex->pprev->nMoneySupply : pindex->nMoneySupply);
+
     if (TestNet()) {
-        // We mine 1 billion every 500 blocks to test new APR
-        if(pindexBest->nHeight == 1) { nSubsidy = 10000000 * COIN; }
+        // We mine 33K every block up to ~10M
+        if(pindexBest->nHeight <= 300) {
+            nSubsidy = 33000 * COIN;
+        }
     } else {
-        if(pindexBest->nHeight == 1) { nSubsidy = 100000 * COIN; }
+        if(pindexBest->nHeight == 1) {
+            // original 100,000 legacy BUZZ premine.
+            nSubsidy = 100000 * COIN;
+        }
     }
 
     LogPrint("creation", "GetProofOfWorkReward() : create=%s nSubsidy=%d\n", FormatMoney(nSubsidy), nSubsidy);
 
-    if (t > 1505852400)
-        return nSubsidy;
-    else
-        return nSubsidy + (nFees / 2);
+    time_t SOME_RANDOM_LEGACY_FORK = 1505852400;
+
+    if (t > SOME_RANDOM_LEGACY_FORK) {
+        if (nSubsidy + fCurrentSupply >= MAX_MONEY) {
+            return MAX_MONEY - fCurrentSupply;
+        }
+
+        if (fCurrentSupply <= MAX_MONEY) {
+            return nSubsidy;
+        }
+    }
+    
+    if (fCurrentSupply >= MAX_MONEY) {
+        return 0;
+    }
+
+    return nSubsidy + (nFees / 2);
 }
 
 // stakers's coin stake reward
@@ -1072,6 +1092,12 @@ int64_t GetProofOfStakeReward(int64_t nCoinAge, int64_t nFees, CBlockIndex* pind
     int64_t nSubsidy;
 
     nSubsidy = nCoinAge * GetCoinYearReward(pindex) * 33 / (365 * 33 + 8);
+
+    double fCurrentSupply = GetCoinSupplyFromAmount(pindex->pprev ? pindex->pprev->nMoneySupply : pindex->nMoneySupply);
+
+    if (nSubsidy + fCurrentSupply >= MAX_MONEY) {
+        nSubsidy = MAX_MONEY - fCurrentSupply;
+    }
 
     LogPrint("creation", "GetProofOfStakeReward(): create=%s nCoinAge=%d\n", FormatMoney(nSubsidy), nCoinAge);
 
@@ -1591,7 +1617,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
 
     if (IsProofOfWork())
     {
-        int64_t nReward = GetProofOfWorkReward(nFees);
+        int64_t nReward = GetProofOfWorkReward(nFees, pindex);
         // Check coinbase reward
         if (vtx[0].GetValueOut() > nReward)
             return DoS(50, error("ConnectBlock() : coinbase reward exceeded (actual=%d vs calculated=%d)",
@@ -1607,7 +1633,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
 
         int64_t nCalculatedStakeReward = GetProofOfStakeReward(nCoinAge, nFees, pindex);
 
-        if (nStakeReward > nCalculatedStakeReward) 
+        if (nStakeReward > nCalculatedStakeReward)
             return DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%d vs calculated=%d)", nStakeReward, nCalculatedStakeReward));
     }
 
@@ -2356,8 +2382,8 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
 
     LogPrintf("ProcessBlock: ACCEPTED\n");
 
-	// If turned on stakeforcharity, send a portion of stake reward to savings account address
-	if (pwalletMain->fStakeForCharity)
+	// If turned on stake4charity, send a portion of stake reward to savings account address
+	if (pwalletMain->fStakeForCharity && (mapBlockIndex[hash]->nHeight >= Params().StabilitySoftFork() || TestNet()))
 		if (!pwalletMain->StakeForCharity())
 			LogPrint("s4c", "ERROR While trying to send portion of stake reward to savings account");
 

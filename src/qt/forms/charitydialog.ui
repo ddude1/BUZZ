@@ -6,19 +6,19 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>250</width>
-    <height>300</height>
+    <width>520</width>
+    <height>240</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>BUZZ Development Fund Donations</string>
+   <string>Support Development</string>
   </property>
   <widget class="QDialogButtonBox" name="buttonBox">
    <property name="geometry">
     <rect>
-     <x>-130</x>
-     <y>250</y>
-     <width>341</width>
+     <x>0</x>
+     <y>190</y>
+     <width>490</width>
      <height>32</height>
     </rect>
    </property>
@@ -29,41 +29,31 @@
     <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
    </property>
   </widget>
-  <widget class="QLineEdit" name="charityPercentEdit">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>190</y>
-     <width>231</width>
-     <height>20</height>
-    </rect>
-   </property>
-   <property name="placeholderText">
-    <string>Enter % to Send (1-100)</string>
-   </property>
-  </widget>
   <widget class="QLineEdit" name="charityAddressEdit">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>220</y>
-     <width>231</width>
+     <x>100</x>
+     <y>150</y>
+     <width>380</width>
      <height>20</height>
     </rect>
    </property>
    <property name="font">
     <font>
-     <pointsize>7</pointsize>
+     <pointsize>13</pointsize>
     </font>
    </property>
    <property name="placeholderText">
-    <string>Enter Address to Send to</string>
+    <string>Development Address</string>
    </property>
   </widget>
   <widget class="QLabel" name="label">
    <property name="geometry">
     <rect>
-     <x>0</x>
+     <x>30</x>
      <y>10</y>
      <width>251</width>
      <height>31</height>
@@ -72,6 +62,8 @@
    <property name="font">
     <font>
      <pointsize>16</pointsize>
+     <weight>50</weight>
+     <bold>false</bold>
     </font>
    </property>
    <property name="text">
@@ -81,29 +73,136 @@
     <bool>false</bool>
    </property>
    <property name="alignment">
-    <set>Qt::AlignCenter</set>
+    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
    </property>
   </widget>
   <widget class="QLabel" name="label_2">
    <property name="geometry">
     <rect>
-     <x>35</x>
-     <y>42</y>
-     <width>181</width>
-     <height>141</height>
+     <x>30</x>
+     <y>40</y>
+     <width>460</width>
+     <height>80</height>
     </rect>
    </property>
    <property name="lineWidth">
     <number>1</number>
    </property>
    <property name="text">
-    <string>The "Stake for Charity" feature allows you to automatically send a % of your stake to another BUZZ address. We have enabled this setting so that you can easily support development efforts within BUZZ! Please let us know if you have this setting activated and we will add you to the VIP group!</string>
+    <string>This dialog allows you to donate a percent of your staking rewards to fund development. These funds will be used to pay for costs including: development, infrastructure, project materials, marketing and more. A minimum of 5% is required. Thank you for your contribution!</string>
    </property>
    <property name="alignment">
     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
    </property>
    <property name="wordWrap">
     <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QSpinBox" name="charityPercentSb">
+   <property name="geometry">
+    <rect>
+     <x>100</x>
+     <y>120</y>
+     <width>70</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="contextMenuPolicy">
+    <enum>Qt::NoContextMenu</enum>
+   </property>
+   <property name="suffix">
+    <string> %</string>
+   </property>
+   <property name="prefix">
+    <string/>
+   </property>
+   <property name="minimum">
+    <number>5</number>
+   </property>
+   <property name="maximum">
+    <number>100</number>
+   </property>
+   <property name="value">
+    <number>1</number>
+   </property>
+   <property name="displayIntegerBase">
+    <number>10</number>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_3">
+   <property name="geometry">
+    <rect>
+     <x>-1</x>
+     <y>122</y>
+     <width>91</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
+   </property>
+   <property name="text">
+    <string>Percent:</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_4">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>150</y>
+     <width>91</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
+   </property>
+   <property name="text">
+    <string>Address:</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+   </property>
+  </widget>
+  <widget class="QLabel" name="testNetLabel">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>200</y>
+     <width>251</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
+   </property>
+   <property name="text">
+    <string>TestNet: Address can be modified!</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="charityAddress">
+   <property name="geometry">
+    <rect>
+     <x>100</x>
+     <y>150</y>
+     <width>380</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>TextLabel</string>
    </property>
   </widget>
  </widget>
@@ -116,12 +215,12 @@
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>248</x>
-     <y>254</y>
+     <x>378</x>
+     <y>194</y>
     </hint>
     <hint type="destinationlabel">
      <x>157</x>
-     <y>274</y>
+     <y>229</y>
     </hint>
    </hints>
   </connection>
@@ -132,12 +231,12 @@
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>316</x>
-     <y>260</y>
+     <x>446</x>
+     <y>200</y>
     </hint>
     <hint type="destinationlabel">
      <x>286</x>
-     <y>274</y>
+     <y>229</y>
     </hint>
    </hints>
   </connection>

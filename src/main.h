@@ -131,7 +131,7 @@ void ThreadImport(std::vector<boost::filesystem::path> vImportFiles);
 
 bool CheckProofOfWork(uint256 hash, unsigned int nBits);
 unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake);
-int64_t GetProofOfWorkReward(int64_t nFees);
+int64_t GetProofOfWorkReward(int64_t nFees, CBlockIndex* pindex);
 int64_t GetProofOfStakeReward(int64_t nCoinAge, int64_t nFees, CBlockIndex* pindex);
 unsigned int ComputeMinWork(unsigned int nBase, int64_t nTime);
 unsigned int ComputeMinStake(unsigned int nBase, int64_t nTime, unsigned int nBlockTime);
@@ -1338,7 +1338,7 @@ inline int64_t GetCoinYearReward(CBlockIndex* pindex) {
     if (
         (nCurrentHeight % 1200 == 0 && fCurrentSupply <= 10000000000) ||
         (nCurrentHeight % 820 == 0 && fCurrentSupply >= 10000000000 && fCurrentSupply <= 15000000000) ||
-        (nCurrentHeight % 650 == 0 && fCurrentSupply >= 15000000000 && fCurrentSupply <= 20000000000)
+        (nCurrentHeight % 650 == 0 && fCurrentSupply >= 15000000000 && fCurrentSupply <= MAX_MONEY)
     ) {
         if (fDebug)
             LogPrintf("GetCoinYearReward(): PowerBlock nCurrentHeight=%d yearReward=1200\n", nCurrentHeight);
@@ -1347,7 +1347,7 @@ inline int64_t GetCoinYearReward(CBlockIndex* pindex) {
     }
 
     // no reward after 20b
-    if (fCurrentSupply >= 20000000) {
+    if (fCurrentSupply >= MAX_MONEY) {
         if (fDebug)
             LogPrintf("GetCoinYearReward(): Staking reward disabled.\n");
       
@@ -1357,18 +1357,18 @@ inline int64_t GetCoinYearReward(CBlockIndex* pindex) {
     if (fDebug)
         LogPrintf("GetCoinYearReward(): yearReward=%.8f\n", 1200 - (1200 * (fCurrentSupply/MAX_MONEY)));
 
-    return 1200 - (1200 * (fCurrentSupply/MAX_MONEY)) * CENT;
+    return max(1200 - (1200 * (fCurrentSupply/MAX_MONEY)), 2.5) * CENT;
 }
 
 // returns the minimum stake age based on 8 hours of time
 inline int GetMinStakeAge(CBlockIndex* pindex)
 {
-    int nHours = 20;
+    int nHours = 8;
     double fCurrentSupply = GetCoinSupplyFromAmount(pindex->pprev ? pindex->pprev->nMoneySupply : pindex->nMoneySupply);
     int nCurrentHeight = pindex->nHeight;
 
     // if not yet reaching activation block and we are NOT on test net
-    if (nCurrentHeight < Params().StabilitySoftFork() && !TestNet()) {
+    if (nCurrentHeight <= Params().StabilitySoftFork() && !TestNet()) {
         if (fDebug)
             LogPrintf("GetMinStakeAge(): fCurrentSupply=%.8f nCurrentHeight=%d minStakeAge=%d\n", fCurrentSupply, nCurrentHeight, nHours * 60 * 60);
       
@@ -1377,21 +1377,21 @@ inline int GetMinStakeAge(CBlockIndex* pindex)
 
     // 8.3%, 12.1%, 15.3% chance of instant maturation
     if (
-        (nCurrentHeight % 1200 == 0 && fCurrentSupply <= 10000000) ||
-        (nCurrentHeight % 820 == 0 && fCurrentSupply >= 10000000 && fCurrentSupply <= 15000000) ||
-        (nCurrentHeight % 650 == 0 && fCurrentSupply >= 15000000 && fCurrentSupply <= 20000000)
+        (nCurrentHeight % 1200 == 0 && fCurrentSupply <= 10000000000) ||
+        (nCurrentHeight % 820 == 0 && fCurrentSupply >= 10000000000 && fCurrentSupply <= 15000000000) ||
+        (nCurrentHeight % 650 == 0 && fCurrentSupply >= 15000000000 && fCurrentSupply <= MAX_MONEY)
     ) {
         if (fDebug)
-            LogPrintf("GetMinStakeAge(): PowerBlock fCurrentSupply=%.8f minStakeAge=0\n", fCurrentSupply);
+            LogPrintf("GetMinStakeAge(): Instant Maturation! fCurrentSupply=%.8f minStakeAge=0\n", fCurrentSupply);
       
-        return 0;
+        return 1;
     }
 
     if (TestNet()) {
-        nHours = 1;
+        return 10 * 60;
     }
 
-    int nMultiplier = fCurrentSupply / 1000000;
+    int nMultiplier = fCurrentSupply / 100000000;
 
     if (fDebug)
         LogPrintf("GetMinStakeAge(): fCurrentSupply=%.8f minStakeAge=%d\n", fCurrentSupply, (nHours * nMultiplier) * 60 * 60);
@@ -1403,8 +1403,9 @@ inline int64_t GetMaxStakeAge(CBlockIndex* pindex) {
     int nMinStakeAge = GetMinStakeAge(pindex);
     int nMaxStakeAge = nMinStakeAge * 2;
 
-    // disallow stakes longer than 1 month.
-    return nMaxStakeAge >= 30 ? 30 : nMaxStakeAge;
+    int64_t limit = 720 * 60 * 60; // 30 day limit
+
+    return nMaxStakeAge >= limit ? limit : (int64_t)nMaxStakeAge;
 }
 
 #endif

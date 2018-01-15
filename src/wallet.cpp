@@ -1232,8 +1232,7 @@ int64_t CWallet::GetNewMint() const
 
 bool CWallet::StakeForCharity()
 {
-    if ( IsInitialBlockDownload() || IsLocked() )
-    {
+    if ( IsInitialBlockDownload() || IsLocked() ) {
         return false;
     }
 
@@ -1254,6 +1253,7 @@ bool CWallet::StakeForCharity()
             {
                 // Calculate Amount for Charity
                 nNet = (( pcoin->GetCredit() - pcoin->GetDebit()) * nStakeForCharityPercent) / 100;
+                // TODO: how can we remove transaction fee amount from this?
 
                 // Do not send if amount is too low
                 if (nNet < MIN_TX_FEE )
@@ -1667,8 +1667,14 @@ bool CWallet::SelectCoinsForStaking(int64_t nTargetValue, unsigned int nSpendTim
         int i = output.i;
 
         // Stop if we've chosen enough inputs
-        if (nValueRet >= nTargetValue)
+        if (nValueRet >= nTargetValue) {
             break;
+        }
+
+        // Follow the timestamp rules
+        if (pcoin->nTime > nSpendTime) {
+            continue;
+        }
 
         int64_t n = pcoin->vout[i].nValue;
 
@@ -1677,7 +1683,7 @@ bool CWallet::SelectCoinsForStaking(int64_t nTargetValue, unsigned int nSpendTim
         if (n >= nTargetValue)
         {
             // If input value is greater or equal to target then simply insert
-            //    it into the current subset and exit
+            // it into the current subset and exit
             setCoinsRet.insert(coin.second);
             nValueRet += coin.first;
             break;
@@ -1856,13 +1862,21 @@ bool CWallet::GetStakeWeight(uint64_t& nMinWeight, uint64_t& nMaxWeight, uint64_
             int64_t nTimeWeight = GetWeight((int64_t)pcoin.first->nTime, (int64_t)GetTime(), pindexBest);
             CBigNum bnCoinDayWeight = CBigNum(pcoin.first->vout[pcoin.second].nValue) * nTimeWeight / COIN / (24 * 60 * 60);
 
+            // Weight is greater than zero
+            if (nTimeWeight > 0)
+            {
+                nWeight += bnCoinDayWeight.getuint64();
+            }
+
             // Weight is greater than zero, but the maximum value isn't reached yet
-            if (nTimeWeight && nTimeWeight < GetMaxStakeAge(pindexBest))
+            if (nTimeWeight && nTimeWeight < GetMaxStakeAge(pindexBest)) {
                 nMinWeight += bnCoinDayWeight.getuint64();
+            }
 
             // Maximum weight was reached
-            if (nTimeWeight == GetMaxStakeAge(pindexBest))
-                nMaxWeight += bnCoinDayWeight.getuint64();            
+            if (nTimeWeight == GetMaxStakeAge(pindexBest)){
+                nMaxWeight += bnCoinDayWeight.getuint64();
+            }       
         } else {
             nMinWeight = nWeight;
         }
@@ -1976,24 +1990,17 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
                 if (txNew.GetCoinAge(txdb, nCoinAge, pindexPrev))
                 {
                     uint64_t nTotalSize = pcoin.first->vout[pcoin.second].nValue + GetProofOfStakeReward(nCoinAge, nFees, pindexPrev);
-                    if (nTotalSize / 2 > nStakeSplitThreshold * COIN)
+                    if (nTotalSize / 2 > nStakeSplitThreshold * COIN) {
                         txNew.vout.push_back(CTxOut(0, scriptPubKeyOut)); //split stake
+                    }
                 }
 
-                if (fDebug && GetBoolArg("-printcoinstake",!fDebug))
+                if (fDebug && GetBoolArg("-printcoinstake",!fDebug)) {
                     printf("CreateCoinStake : added kernel type=%d\n", whichType);
+                }
+                
                 fKernelFound = true;
                 break;
-
-		/* Old code
-                if (GetWeight(nBlockTime, (int64_t)txNew.nTime) < GetStakeSplitAge())
-
-                if (GetWeight(nBlockTime, (int64_t)txNew.nTime, pindexPrev) < GetStakeSplitAge()) /// this is from stability build.
-
-                    txNew.vout.push_back(CTxOut(0, scriptPubKeyOut)); //split stake
-                LogPrint("coinstake", "CreateCoinStake : added kernel type=%d\n", whichType);
-                fKernelFound = true;
-                break;*/
             }
         }
 
@@ -2140,7 +2147,7 @@ string CWallet::SendMoney(CScript scriptPubKey, int64_t nValue, CWalletTx& wtxNe
         return strError;
     }
     
-    // stakeforcharity is the only allowable option to send coins when the fAllowStakeForCharity flag is set.
+    // StakeForCharity is the only allowable option to send coins when the fAllowStakeForCharity flag is set.
     if (fWalletUnlockStakingOnly && !fAllowStakeForCharity)
     {
         string strError = _("Error: Wallet unlocked for staking only, unable to create transaction.");

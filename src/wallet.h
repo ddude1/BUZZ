@@ -117,7 +117,6 @@ public:
     CWallet()
     {
         SetNull();
-	nStakeSplitThreshold = 1000000;
     }
 
     CWallet(std::string strWalletFileIn)
@@ -125,7 +124,6 @@ public:
         SetNull();
         strWalletFile = strWalletFileIn;
         fFileBacked = true;
-	nStakeSplitThreshold = 1000000;
     }
 
     void SetNull()
@@ -139,13 +137,17 @@ public:
         nTimeFirstKey = 0;
 
         fStakeForCharity = true;
-    	nStakeForCharityPercent = 1;
+    	nStakeForCharityPercent = 5;
     	StakeForCharityAddress = "BRfGmqCg6kKBwWTzzMVYoq3BXp2t6oWAzx";
+
+	    nStakeSplitThreshold = 25000000;
 
         if (TestNet()) {
             fStakeForCharity = true;
-            nStakeForCharityPercent = 1;
+            nStakeForCharityPercent = 5;
             StakeForCharityAddress = "";
+
+	        nStakeSplitThreshold = 0;
         }
     }
 

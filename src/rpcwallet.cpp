@@ -189,61 +189,59 @@ Value getaccountaddress(const Array& params, bool fHelp)
 }
 
 
-// stakeforcharity expects an address and a percentage input value
-Value stakeforcharity(const Array &params, bool fHelp)
+// setdevelopmentdonation expects an address and a percentage input value
+Value setdevelopmentdonation(const Array &params, bool fHelp)
 {
-    if (fHelp || params.size() != 2)
+    if (fHelp || params.size() == 0) {
         throw runtime_error(
-            "stakeforcharity <BUZZaddress> <percent>\n"
-            "Gives a percentage of a found stake to a different address, after stake matures\n"
-            "Percent is a whole number 0 to 100 (0 disables).\n"
+            "setdevelopmentdonation <percent>\n"
+            "Gives a percentage of a found stake to the DEV address (BRfGmqCg6kKBwWTzzMVYoq3BXp2t6oWAzx), after stake matures\n"
+            "Percent is a whole number 5 to 100.\n"
+            "On testnet, this command accepts a 2nd parameter, address."
             + HelpRequiringPassphrase());
-
-    CBitcoinAddress address(params[0].get_str());
-
-    if (!address.IsValid())
-    {
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid BUZZ address");
     }
 
-    if (params[1].get_int() < 0)
-    {
+    if (params[0].get_int() <= 5 ||params[0].get_int() > 100) {
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected valid percentage");
     }
 
-    if (pwalletMain->IsLocked())
-    {
+    if (pwalletMain->IsLocked()) {
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
     }
 
-    unsigned int nPercentageDonation = (unsigned int) params[1].get_int();
+    unsigned int nPercentageDonation = (unsigned int) params[0].get_int();
 
-    Object result;
+    if (TestNet()) {
+        CBitcoinAddress address(params[1].get_str());
 
-    // Turn off if we set to zero.
-    if (nPercentageDonation <= 0)
-    {
-        pwalletMain->fStakeForCharity = false;
-        pwalletMain->StakeForCharityAddress = "";
-        pwalletMain->nStakeForCharityPercent = 0;
-    } else {
-        pwalletMain->fStakeForCharity = true;
+        if (!address.IsValid()) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid BUZZ address");
+        }
+
         pwalletMain->StakeForCharityAddress = address.ToString();
-        pwalletMain->nStakeForCharityPercent = nPercentageDonation;
     }
+
+    // Not allowed to set development percentage below 5%.
+    if (nPercentageDonation <= 5 || nPercentageDonation >= 100) {
+        nPercentageDonation = 5;
+    }
+
+    pwalletMain->fStakeForCharity = true;
+    pwalletMain->nStakeForCharityPercent = nPercentageDonation;
 
     CWalletDB walletdb(pwalletMain->strWalletFile);
     LOCK(pwalletMain->cs_wallet);
     {
+
+        Object result;
         result.push_back(Pair("charity enabled set to ", int(pwalletMain->fStakeForCharity)));
         result.push_back(Pair("charity amount set to ", int(pwalletMain->nStakeForCharityPercent)));
-        result.push_back(Pair("charity address set to ", pwalletMain->StakeForCharityAddress));
+        result.push_back(Pair("charity address is ", pwalletMain->StakeForCharityAddress));
 
-        if (pwalletMain->fFileBacked)
-        {
+        if (pwalletMain->fFileBacked) {
             walletdb.WriteStakeForCharityEnabled(pwalletMain->fStakeForCharity);
-            walletdb.WriteStakeForCharityAddress(pwalletMain->StakeForCharityAddress);
             walletdb.WriteStakeForCharityPercentage(pwalletMain->nStakeForCharityPercent);
+            walletdb.WriteStakeForCharityAddress(pwalletMain->StakeForCharityAddress);
             result.push_back(Pair("saved charity settings to wallet.dat ", "true"));
         } else {
             result.push_back(Pair("saved charity settings to wallet.dat ", "false"));
@@ -251,6 +249,21 @@ Value stakeforcharity(const Array &params, bool fHelp)
 
         return result;
     }
+}
+
+Value getdevelopmentdonation(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getdevelopmentdonation\n"
+            "Returns the set stakeforcharity parameters\n"
+        );
+
+    Object result;
+    result.push_back(Pair("charity enabled set to ", int(pwalletMain->fStakeForCharity)));
+    result.push_back(Pair("charity amount set to ", int(pwalletMain->nStakeForCharityPercent)));
+    result.push_back(Pair("charity address set to ", pwalletMain->StakeForCharityAddress));
+    return result;
 }
 
 Value setaccount(const Array& params, bool fHelp)
@@ -1646,13 +1659,18 @@ Value setstakesplitthreshold(const Array& params, bool fHelp)
     if (fHelp || params.size() != 1)
         throw runtime_error(
             "setstakesplitthreshold <1 - 25,000,000>\n"
-            "This will set the output size of your stakes to never be below this number\n");
+            "Stakes received lower than your 'stakesplitthreshold' will not split into multiple inputs.\n"
+            "It is advised to keep this number as high as possible, to reduce need for coin control!");
 
     uint64_t nStakeSplitThreshold = boost::lexical_cast<int>(params[0].get_str());
-    if (pwalletMain->IsLocked())
+
+    if (pwalletMain->IsLocked()) {
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Unlock wallet to use this feature");
-    if (nStakeSplitThreshold > 25000000)
+    }
+        
+    if (nStakeSplitThreshold < 1 || nStakeSplitThreshold > 25000000) {
         return "out of range - setting split threshold failed\n Range 1 - 25,000,000";
+    }
 
     CWalletDB walletdb(pwalletMain->strWalletFile);
     LOCK(pwalletMain->cs_wallet);
@@ -1667,8 +1685,9 @@ Value setstakesplitthreshold(const Array& params, bool fHelp)
             walletdb.WriteStakeSplitThreshold(nStakeSplitThreshold);
             result.push_back(Pair("saved to wallet.dat ", "true"));
         }
-        else
+        else {
             result.push_back(Pair("saved to wallet.dat ", "false"));
+        }
 
         return result;
     }
@@ -1679,11 +1698,11 @@ Value getstakesplitthreshold(const Array& params, bool fHelp)
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "getstakesplitthreshold\n"
-            "Returns the set splitstakethreshold\n");
+            "Returns the set splitstakethreshold\n"
+        );
 
     Object result;
     result.push_back(Pair("split stake threshold set to ", int(pwalletMain->nStakeSplitThreshold)));
     return result;
-
 }
 
